@@ -13,7 +13,11 @@ const Message = require("./model/Message");
 const chatRoutes = require("./routes/chatRoutes");
 const app=express()
 app.use("/uploads", express.static("uploads"));
-app.use(cors())
+app.use(cors({
+    origin:'https://rentadda.netlify.app',
+    methods:['GET','POST','PUT','DELETE'],
+    credentials:true
+}))
 app.use(express.json())
 
 User.hasMany(Item,{foreignKey:"userId"})
