@@ -1,6 +1,8 @@
-const Item=require('../model/ItemModel');
+const Item = require('../model/ItemModel');
 const User = require('../model/UserModel');
 const { Op } = require("sequelize");
+const util = require("util");
+
 
 exports.addItem = async (req, res) => {
   try {
@@ -10,14 +12,14 @@ exports.addItem = async (req, res) => {
       return res.status(400).json({ message: "Image file is required" });
     }
 
-    const imageUrl = req.file.filename;
+    const imageUrl = req.file.path;
 
     const item = await Item.create({
       title,
       description,
       pricePerDay,
       category,
-      image: imageUrl,
+      image: imageUrl,    
       userId: req.user.id,
     });
 
@@ -26,11 +28,14 @@ exports.addItem = async (req, res) => {
       item,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to add item" });
+    console.error(err)
+    res.status(500).json({ message: "Failed to add item"});
   }
 };
 
+
+
+// ✅ Get Items with Filters
 exports.getItems = async (req, res) => {
   try {
     const {
@@ -43,26 +48,16 @@ exports.getItems = async (req, res) => {
 
     const where = {};
 
-    // ✅ Search by title or description
-    if (search) {
-      where.title = { [Op.like]: `%${search}%` };
-    }
+    if (search) where.title = { [Op.like]: `%${search}%` };
+    if (category) where.category = category;
 
-    // ✅ Category filter
-    if (category) {
-      where.category = category;
-    }
-
-    // ✅ Price filter
     if (minPrice || maxPrice) {
       where.pricePerDay = {};
       if (minPrice) where.pricePerDay[Op.gte] = Number(minPrice);
       if (maxPrice) where.pricePerDay[Op.lte] = Number(maxPrice);
     }
 
-    // ✅ Sorting
-    let order = [["createdAt", "DESC"]]; // default: newest first
-
+    let order = [["createdAt", "DESC"]];
     if (sort === "priceAsc") order = [["pricePerDay", "ASC"]];
     if (sort === "priceDesc") order = [["pricePerDay", "DESC"]];
 
@@ -79,12 +74,14 @@ exports.getItems = async (req, res) => {
   }
 };
 
+
+
+// ✅ Get Single Item
+
 exports.getItemById = async (req, res) => {
   try {
-    const { id } = req.params;
-
     const item = await Item.findOne({
-      where: { id },
+      where: { id: req.params.id },
       include: { model: User, attributes: ["id", "name"] }
     });
 
@@ -99,11 +96,14 @@ exports.getItemById = async (req, res) => {
   }
 };
 
+
+
+// ✅ Get My Items
 exports.getMyItems = async (req, res) => {
   try {
     const items = await Item.findAll({
       where: { userId: req.user.id },
-      order: [["createdAt", "DESC"]]
+      order: [["createdAt", "DESC"]],
     });
 
     res.json({ items });
@@ -113,6 +113,9 @@ exports.getMyItems = async (req, res) => {
   }
 };
 
+
+
+// ✅ Delete Item
 exports.deleteItem = async (req, res) => {
   try {
     const item = await Item.findOne({
@@ -131,6 +134,9 @@ exports.deleteItem = async (req, res) => {
   }
 };
 
+
+
+// ✅ Update Item (Cloudinary support)
 exports.updateItem = async (req, res) => {
   try {
     const { title, description, pricePerDay, category } = req.body;
@@ -143,8 +149,10 @@ exports.updateItem = async (req, res) => {
       return res.status(404).json({ message: "Item not found or not yours" });
     }
 
-    // If user uploaded a new image
-    if (req.file) item.image = req.file.filename;
+    // ✅ If new image uploaded → Cloudinary URL
+    if (req.file) {
+      item.image = req.file.path;
+    }
 
     item.title = title;
     item.description = description;
@@ -155,7 +163,7 @@ exports.updateItem = async (req, res) => {
 
     res.json({ message: "Item updated", item });
   } catch (err) {
-    console.error(err);
+    console.error("UPLOAD ERROR:", err.message, err);
     res.status(500).json({ message: "Failed to update item" });
   }
 };
