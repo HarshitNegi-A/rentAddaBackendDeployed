@@ -6,6 +6,7 @@ const sequelize = new Sequelize(process.env.MYSQL_URL, {
   dialectOptions: {
     ssl: {
       require: true,
+      rejectUnauthorized: false,
     },
   },
   logging: false,
